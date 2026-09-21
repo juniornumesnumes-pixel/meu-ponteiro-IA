@@ -6,16 +6,139 @@ from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
-API_KEY = os.environ.get("GROQ_KEY")
-
 client = Groq(
-    api_key=API_KEY
+    api_key=os.environ.get("GROQ_KEY")
 )
 
 
-# =========================================================
-# PÁGINA DO CHAT
-# =========================================================
+def obter_hora():
+    return datetime.now(
+        ZoneInfo("America/Sao_Paulo")
+    )
+
+
+def precisa_pesquisa(texto):
+    texto = texto.lower()
+
+    palavras = [
+        "hoje",
+        "agora",
+        "atualmente",
+        "último",
+        "última",
+        "últimas",
+        "ultimo",
+        "ultima",
+        "ultimas",
+        "notícia",
+        "notícias",
+        "noticia",
+        "noticias",
+        "resultado",
+        "placar",
+        "jogo",
+        "futebol",
+        "preço",
+        "preco",
+        "cotação",
+        "cotacao",
+        "dólar",
+        "dolar",
+        "euro",
+        "presidente",
+        "eleição",
+        "eleições",
+        "eleicao",
+        "eleicoes",
+        "clima",
+        "previsão",
+        "previsao",
+        "lançamento",
+        "lancamento",
+        "filme",
+        "série",
+        "serie",
+        "pesquise",
+        "pesquisar",
+        "procure",
+        "internet",
+        "mundo",
+        "quem é",
+        "quem e"
+    ]
+
+    return any(
+        palavra in texto
+        for palavra in palavras
+    )
+
+
+def e_criativa(texto):
+    texto = texto.lower()
+
+    palavras = [
+        "história",
+        "historia",
+        "conto",
+        "roteiro",
+        "personagem",
+        "invente",
+        "inventar",
+        "crie uma história",
+        "criar uma história",
+        "poema",
+        "poesia"
+    ]
+
+    return any(
+        palavra in texto
+        for palavra in palavras
+    )
+
+
+def criar_sistema():
+    agora = obter_hora()
+
+    return f"""
+Você é o INFINITO IA, um assistente inteligente
+em português do Brasil.
+
+Data atual:
+{agora.strftime("%d/%m/%Y")}
+
+Hora atual:
+{agora.strftime("%H:%M")}
+
+REGRAS:
+
+1. Responda sempre em português do Brasil.
+
+2. Seja inteligente, claro e preciso.
+
+3. Não invente fatos.
+
+4. Para perguntas que dependem de informações
+atuais, utilize a pesquisa na internet quando
+ela estiver disponível.
+
+5. Diferencie fatos confirmados de hipóteses.
+
+6. Para perguntas difíceis, faça uma análise
+cuidadosa e explique passo a passo.
+
+7. Para matemática, faça os cálculos corretamente.
+
+8. Para histórias e roteiros, seja criativo.
+
+9. Não invente fontes ou links.
+
+10. Se não souber algo, diga claramente.
+
+11. Não diga que possui conhecimento infinito.
+
+12. Responda diretamente à pergunta do usuário.
+"""
+
 
 @app.route("/")
 def home():
@@ -35,7 +158,7 @@ content="width=device-width,initial-scale=1">
 body{
     font-family:Arial,sans-serif;
     background:#0f0f0f;
-    color:white;
+    color:#fff;
     margin:0;
     display:flex;
     flex-direction:column;
@@ -94,7 +217,7 @@ input{
     border-radius:25px;
     border:1px solid #333;
     background:#1f1f1f;
-    color:white;
+    color:#fff;
     outline:none;
     font-size:16px;
 }
@@ -107,10 +230,6 @@ button{
     color:#000;
     font-weight:bold;
     font-size:15px;
-}
-
-button:active{
-    transform:scale(.97);
 }
 
 </style>
@@ -145,9 +264,7 @@ Enviar
 
 </div>
 
-
 <script>
-
 
 function addMessage(text, classe){
 
@@ -168,7 +285,6 @@ function addMessage(text, classe){
 }
 
 
-
 async function send(){
 
     const input =
@@ -181,21 +297,17 @@ async function send(){
         return;
     }
 
-
     addMessage(
         pergunta,
         "u"
     );
 
-
     input.value = "";
-
 
     addMessage(
         "Pensando...",
         "b"
     );
-
 
     try{
 
@@ -234,7 +346,7 @@ async function send(){
         }
 
 
-        let dados = null;
+        let dados;
 
 
         try{
@@ -246,12 +358,11 @@ async function send(){
         catch(erro){
 
             addMessage(
-                "ERRO DO SERVIDOR\n\n" +
+                "ERRO DO SERVIDOR\\n\\n" +
                 "HTTP: " +
                 resposta.status +
-                "\n\n" +
+                "\\n\\n" +
                 texto.substring(0,1500),
-
                 "b"
             );
 
@@ -265,7 +376,6 @@ async function send(){
                 dados.reply ||
                 "Erro HTTP " +
                 resposta.status,
-
                 "b"
             );
 
@@ -276,10 +386,8 @@ async function send(){
         addMessage(
             dados.reply ||
             "Não recebi uma resposta.",
-
             "b"
         );
-
 
     }
     catch(erro){
@@ -298,19 +406,14 @@ async function send(){
 
 
         addMessage(
-            "ERRO DE CONEXÃO\n\n" +
+            "ERRO DE CONEXÃO\\n\\n" +
             erro,
-
             "b"
         );
-
     }
 
-
     input.focus();
-
 }
-
 
 
 document
@@ -334,367 +437,136 @@ document
 '''
 
 
-# =========================================================
-# DETECTA SE A PERGUNTA PODE PRECISAR DA INTERNET
-# =========================================================
-
-def precisa_pesquisa(texto):
-
-    texto = texto.lower()
-
-    palavras = [
-
-        "hoje",
-        "agora",
-        "atualmente",
-        "último",
-        "última",
-        "últimas",
-        "ultimo",
-        "ultima",
-        "ultimas",
-
-        "notícia",
-        "notícias",
-        "noticia",
-        "noticias",
-
-        "resultado",
-        "placar",
-        "jogo",
-        "futebol",
-
-        "preço",
-        "preco",
-        "cotação",
-        "cotacao",
-
-        "dólar",
-        "dolar",
-        "euro",
-
-        "presidente",
-        "eleição",
-        "eleições",
-        "eleicao",
-        "eleicoes",
-
-        "clima",
-        "tempo",
-        "previsão",
-        "previsao",
-
-        "lançamento",
-        "lancamento",
-
-        "filme",
-        "série",
-        "serie",
-
-        "empresa",
-
-        "pesquise",
-        "pesquisar",
-        "procure",
-
-        "internet",
-        "mundo",
-
-        "quem é",
-        "quem e"
-    ]
-
-    return any(
-        palavra in texto
-        for palavra in palavras
-    )
-
-
-# =========================================================
-# DETECTA PERGUNTAS CRIATIVAS
-# =========================================================
-
-def pergunta_criativa(texto):
-
-    texto = texto.lower()
-
-    palavras = [
-
-        "história",
-        "historia",
-        "conto",
-        "roteiro",
-        "personagem",
-        "invente",
-        "inventar",
-        "crie uma história",
-        "criar uma história",
-        "ficção",
-        "poema",
-        "poesia"
-    ]
-
-    return any(
-        palavra in texto
-        for palavra in palavras
-    )
-
-
-# =========================================================
-# CHAMADA NORMAL DA GROQ
-# =========================================================
-
-def chamar_normal(mensagem, max_tokens):
-
-    return client.chat.completions.create(
-
-        model="openai/gpt-oss-20b",
-
-        messages=[
-            {
-                "role":"system",
-                "content":SISTEMA
-            },
-            {
-                "role":"user",
-                "content":mensagem
-            }
-        ],
-
-        max_completion_tokens=max_tokens,
-
-        temperature=0.7,
-
-        stream=False
-    )
-
-
-# =========================================================
-# CHAMADA COM PESQUISA
-# =========================================================
-
-def chamar_pesquisa(mensagem):
-
-    return client.chat.completions.create(
-
-        model="openai/gpt-oss-20b",
-
-        messages=[
-            {
-                "role":"system",
-                "content":SISTEMA
-            },
-            {
-                "role":"user",
-                "content":mensagem
-            }
-        ],
-
-        tools=[
-            {
-                "type":"browser_search"
-            }
-        ],
-
-        tool_choice="required",
-
-        max_completion_tokens=4000,
-
-        temperature=0.6,
-
-        stream=False
-    )
-
-
-# =========================================================
-# CHAT
-# =========================================================
-
 @app.route("/chat", methods=["POST"])
 def chat():
 
     try:
 
-        data =
-            request.get_json(silent=True) or {}
+        data = request.get_json(
+            silent=True
+        ) or {}
 
 
-        mensagem =
-            str(
-                data.get(
-                    "message",
-                    ""
-                )
-            ).strip()
+        mensagem = str(
+            data.get(
+                "message",
+                ""
+            )
+        ).strip()
 
 
         if not mensagem:
 
             return jsonify({
-                "reply":
-                "Digite uma pergunta."
+                "reply": "Digite uma pergunta."
             })
 
 
-        agora = datetime.now(
-            ZoneInfo("America/Sao_Paulo")
-        )
+        sistema = criar_sistema()
 
-
-        global SISTEMA
-
-
-        SISTEMA = f"""
-
-Você é o INFINITO IA,
-um assistente de inteligência artificial
-em português do Brasil.
-
-Data atual:
-{agora.strftime("%d/%m/%Y")}
-
-Hora atual:
-{agora.strftime("%H:%M")}
-
-OBJETIVO:
-
-Responder perguntas com inteligência,
-clareza, precisão e bom raciocínio.
-
-REGRAS:
-
-1. Responda em português do Brasil.
-
-2. Não invente fatos.
-
-3. Quando a pergunta depender de informações
-recentes, utilize a pesquisa na internet
-quando ela estiver disponível.
-
-4. Diferencie fatos de hipóteses.
-
-5. Em perguntas difíceis, analise o problema
-com cuidado antes de responder.
-
-6. Explique de forma clara e organizada.
-
-7. Não diga que possui conhecimento infinito.
-
-8. Se não souber alguma coisa, seja honesto.
-
-9. Para histórias e roteiros, seja criativo.
-
-10. Não invente fontes ou links.
-
-"""
-
-
-        # =================================================
-        # MODO DA PERGUNTA
-        # =================================================
 
         pesquisa = precisa_pesquisa(
             mensagem
         )
 
-        criativa = pergunta_criativa(
+
+        criativa = e_criativa(
             mensagem
         )
 
 
-        # =================================================
-        # TEXTO LONGO
-        # =================================================
+        texto_lower = mensagem.lower()
 
-        if any(x in mensagem.lower() for x in [
 
+        if any(x in texto_lower for x in [
             "300 linhas",
             "300 linha",
             "200 linhas",
             "100 linhas",
             "texto grande",
             "livro"
-
         ]):
 
             max_tokens = 6000
 
-
         elif criativa:
 
             max_tokens = 4000
-
 
         else:
 
             max_tokens = 3000
 
 
-        # =================================================
-        # TENTA PESQUISA
-        # =================================================
-
         if pesquisa and not criativa:
 
-            try:
+            resposta = client.chat.completions.create(
 
-                resposta =
-                    chamar_pesquisa(
-                        mensagem
-                    )
+                model="openai/gpt-oss-20b",
 
-            except Exception as erro_pesquisa:
+                messages=[
+                    {
+                        "role": "system",
+                        "content": sistema
+                    },
+                    {
+                        "role": "user",
+                        "content": mensagem
+                    }
+                ],
 
-                print(
-                    "PESQUISA FALHOU:",
-                    repr(erro_pesquisa)
-                )
+                tools=[
+                    {
+                        "type": "browser_search"
+                    }
+                ],
 
+                tool_choice="required",
 
-                # =========================================
-                # FALLBACK
-                # =========================================
+                max_completion_tokens=4000,
 
-                try:
+                temperature=0.6,
 
-                    resposta =
-                        chamar_normal(
-                            mensagem,
-                            max_tokens
-                        )
-
-                except Exception as erro_normal:
-
-                    raise Exception(
-                        "Pesquisa falhou: "
-                        + repr(erro_pesquisa)
-                        + "\n\n"
-                        "Resposta normal também falhou: "
-                        + repr(erro_normal)
-                    )
-
+                stream=False
+            )
 
         else:
 
-            resposta =
-                chamar_normal(
-                    mensagem,
-                    max_tokens
-                )
+            resposta = client.chat.completions.create(
+
+                model="openai/gpt-oss-20b",
+
+                messages=[
+                    {
+                        "role": "system",
+                        "content": sistema
+                    },
+                    {
+                        "role": "user",
+                        "content": mensagem
+                    }
+                ],
+
+                max_completion_tokens=max_tokens,
+
+                temperature=0.7,
+
+                stream=False
+            )
 
 
-        # =================================================
-        # PEGA RESPOSTA
-        # =================================================
-
-        conteudo =
-            resposta.choices[0].message.content
+        conteudo = (
+            resposta.choices[0]
+            .message.content
+        )
 
 
         if not conteudo:
 
-            conteudo =
-                "Não consegui gerar uma resposta."
+            conteudo = (
+                "Não consegui gerar "
+                "uma resposta."
+            )
 
 
         return jsonify({
@@ -709,7 +581,7 @@ com cuidado antes de responder.
         )
 
         print(
-            "ERRO REAL:"
+            "ERRO REAL DO INFINITO IA:"
         )
 
         print(
@@ -722,17 +594,11 @@ com cuidado antes de responder.
 
 
         return jsonify({
-
             "reply":
-            "ERRO REAL DO SERVIDOR:\n\n"
+            "ERRO REAL DO SERVIDOR:\\n\\n"
             + repr(erro)
-
         }), 500
 
-
-# =========================================================
-# INICIAR
-# =========================================================
 
 if __name__ == "__main__":
 
@@ -747,4 +613,4 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=port
-    )
+        )
