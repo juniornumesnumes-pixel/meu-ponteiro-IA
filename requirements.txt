@@ -4,3 +4,4 @@ gunicorn
 pytz
 requests
 wikipedia
+duckduckgo-search
