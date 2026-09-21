@@ -3,9 +3,18 @@ import os
 from groq import Groq
 from datetime import datetime
 import pytz
+import requests
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_KEY"))
+
+def get_clima_tempo():
+    try:
+        # Tempo real de Bacabal
+        r = requests.get("https://wttr.in/Bacabal?format=%C+%t+vento+%w", timeout=3)
+        return r.text
+    except:
+        return "Clima de Bacabal nao disponivel agora"
 
 @app.route("/")
 def home():
@@ -21,16 +30,19 @@ body{font-family:Arial;background:#0f0f0f;color:#fff;margin:0;display:flex;flex-
 input{flex:1;padding:13px 16px;border-radius:25px;border:1px solid #333;background:#1f1f1f;color:#fff;outline:none}
 button{padding:13px 18px;border-radius:25px;border:none;background:#00e676;color:#000;font-weight:bold}
 </style></head><body>
-<div id="top">INFINITO IA - Sabe de Tudo</div>
-<div id="chat"><div class="b">Pronto! Agora sou igual ao Google: sei de tudo!
+<div id="top">INFINITO IA - Inteligente</div>
+<div id="chat"><div class="b">Agora sou inteligente de verdade!
 
-Pergunta futebol, matematica, dever de casa, historia, o que quiser!</div></div>
-<div id="bar"><input id="inp" placeholder="Pergunte qualquer coisa..."><button onclick="send()">Enviar</button></div>
+Pergunta curta = respondo curto
+Pergunta longa = respondo longo
+
+Testa: "que dia foi o jogo?" e "me explica o jogo"</div></div>
+<div id="bar"><input id="inp" placeholder="Pergunte..."><button onclick="send()">Enviar</button></div>
 <script>
 async function send(){
  let i=document.getElementById('inp'); let t=i.value.trim(); if(!t)return;
  let c=document.getElementById('chat'); c.innerHTML+=`<div class="u">${t}</div>`; i.value=''; c.scrollTop=c.scrollHeight;
- try{let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});let d=await r.json();c.innerHTML+=`<div class="b">${d.reply}</div>`;}catch(e){c.innerHTML+=`<div class="b">Erro de conexao</div>`}c.scrollTop=c.scrollHeight;
+ try{let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});let d=await r.json();c.innerHTML+=`<div class="b">${d.reply}</div>`;}catch(e){c.innerHTML+=`<div class="b">Erro</div>`}c.scrollTop=c.scrollHeight;
 }
 document.getElementById('inp').addEventListener('keypress',e=>{if(e.key==='Enter')send()});
 </script></body></html>
@@ -41,55 +53,65 @@ def chat():
     try:
         data = request.get_json()
         msg_original = data.get("message","")
-        msg = msg_original.lower()
+        msg = msg_original.lower().strip()
         agora = datetime.now(pytz.timezone("America/Sao_Paulo"))
 
-        # DADOS REAIS DE HOJE - pra nao inventar
-        dados_reais = f"HOJE: {agora.strftime('%d/%m/%Y')} - Ontem 20/09/2026. Jogo Palmeiras: Gremio 0x0 Palmeiras em 20/09. Vasco 5x0 Coritiba 19/09. Flamengo 2x1 Bragantino 20/09."
+        # --- DETECTOR INTELIGENTE DE TAMANHO ---
+        # Pergunta curta: poucas palavras ou pede data/hora/clima
+        palavras_curta = ["que dia", "quando foi", "que horas", "que hora", "clima", "tempo hoje", "placar", "quanto foi", "resultado"]
+        palavras_longa = ["explica", "me ajuda", "como faz", "como funciona", "por que", "porque", "dever", "me ensina", "detalha", "resumo", "completo"]
 
-        # Define se tem que ser curto ou longo
-        eh_pergunta_curta = any(x in msg for x in ["quando foi", "que dia foi", "quanto foi", "placar"])
-        eh_dever = any(x in msg for x in ["dever", "matematica", "explica", "como faz", "me ajuda", "conta"])
+        eh_curta = len(msg.split()) <= 6 or any(p in msg for p in palavras_curta)
+        eh_longa = len(msg.split()) > 8 or any(p in msg for p in palavras_longa)
 
-        if eh_pergunta_curta and "palmeiras" in msg:
-            # Resposta curta igual Google
-            return jsonify({"reply": "Foi ontem, 20/09/2026 - Gremio 0x0 Palmeiras - Brasileirao"})
+        # Dados reais
+        clima = ""
+        if "clima" in msg or "tempo" in msg:
+            clima = get_clima_tempo()
 
-        # Sistema inteligente igual Google
-        if eh_dever:
-            sistema = f"""Voce e o INFINITO IA, igual ao Google, sabe tudo do mundo.
+        info_base = f"HOJE: {agora.strftime('%d/%m/%Y %H:%M')} - Bacabal. Ontem 20/09/2026 Gremio 0x0 Palmeiras. Clima: {clima}"
 
-            DADOS: {dados_reais}
+        if eh_curta and not eh_longa:
+            # MODO CURTO - igual Google
+            sistema = f"""Voce e o Google. Responda CURTO e DIRETO, 1 linha no maximo.
 
-            REGRAS:
-            - Usuario quer ajuda com dever/matematica: EXPLIQUE COMPLETO, passo a passo, igual professor
-            - Seja inteligente, explique tudo, de exemplos
-            - Nao seja curto aqui, seja completo e ajude de verdade
+            DADOS: {info_base}
+
+            REGRAS MODO CURTO:
+            - Se perguntarem "que dia foi o jogo do Palmeiras?" -> "Foi ontem, 20/09/2026 - Gremio 0x0 Palmeiras"
+            - Se perguntarem "que horas sao?" -> "{agora.strftime('%H:%M')} em Bacabal"
+            - Se perguntarem "como esta o clima?" -> Responda curto com o clima: {clima}
+            - Se perguntarem "quanto e 5x5?" -> "25"
+            - NUNCA mande textao. 1 linha.
             - PT-BR"""
-            max_tokens = 1000
+            max_tokens = 80
+            temp = 0.2
         else:
-            sistema = f"""Voce e o INFINITO IA, igual ao Google.
+            # MODO LONGO - explica tudo
+            sistema = f"""Voce e o INFINITO IA, igual ao Google, sabe tudo.
 
-            DADOS: {dados_reais}
+            DADOS: {info_base}
 
-            REGRAS:
-            - Voce sabe de tudo: futebol, matematica, historia, ciencia, tudo
-            - Se perguntarem futebol, responda curto e direto com data real
-            - Se perguntarem outra coisa, responda inteligente e completo
-            - Nunca invente placar, use os dados reais acima
-            - PT-BR, natural igual Google"""
-            max_tokens = 400
+            REGRAS MODO LONGO:
+            - Usuario fez pergunta longa ou pediu explicacao
+            - Responda completo, inteligente, passo a passo
+            - Se for dever de casa, explique como professor
+            - Se for "me explica o jogo do Palmeiras", explique onde foi, horario, rodada, o que aconteceu
+            - Pode usar 3-5 paragrafos
+            - PT-BR, completo"""
+            max_tokens = 800
+            temp = 0.6
 
         comp = client.chat.completions.create(
             model="openai/gpt-oss-20b",
             messages=[{"role":"system","content":sistema},{"role":"user","content":msg_original}],
             max_tokens=max_tokens,
-            temperature=0.5
+            temperature=temp
         )
         return jsonify({"reply": comp.choices[0].message.content})
 
     except Exception as e:
-        return jsonify({"reply": f"Tive um erro, mas tenta de novo: {str(e)[:100]}"})
+        return jsonify({"reply": "Tenta de novo, deu um erro aqui"})
 
 if __name__ == "__main__":
     app.run()
