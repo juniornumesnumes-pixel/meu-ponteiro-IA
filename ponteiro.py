@@ -4,67 +4,57 @@ from groq import Groq
 from datetime import datetime
 import pytz
 import requests
+import wikipedia
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_KEY"))
+wikipedia.set_lang("pt")
 
-FUSOS = {
-    "Bacabal / Brasil": "America/Sao_Paulo",
-    "Nova York / EUA": "America/New_York",
-    "Londres / UK": "Europe/London",
-    "Toquio / Japao": "Asia/Tokyo"
-}
+FUSOS = {"Bacabal / Brasil": "America/Sao_Paulo","Nova York":"America/New_York","Londres":"Europe/London","Toquio":"Asia/Tokyo"}
 
 def get_relogio():
     txt=""
-    for nome,fuso in FUSOS.items():
-        agora=datetime.now(pytz.timezone(fuso))
-        txt+=f"{nome}: {agora.strftime('%H:%M:%S %d/%m')}\n"
+    for n,f in FUSOS.items():
+        txt+=f"{n}: {datetime.now(pytz.timezone(f)).strftime('%H:%M:%S %d/%m')}\n"
     return txt
 
-def get_jogos_futebol():
+def get_noticias_mundo():
+    try:
+        # Pega noticias do Google News via API gratis
+        r = requests.get("https://api.rss2json.com/v1/api.json?rss_url=https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt-419", timeout=6).json()
+        noticias = []
+        for item in r.get("items",[])[:8]:
+            noticias.append(f"- {item['title']} ({item['pubDate'][:16]})")
+        return "\n".join(noticias)
+    except:
+        return "Noticias indisponiveis no momento"
+
+def get_futebol():
     jogos=[]
     try:
-        # Brasileirão
         r = requests.get("https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard", timeout=5).json()
-        for ev in r.get("events",[])[:10]:
+        for ev in r.get("events",[])[:6]:
             try:
-                home = ev['competitions'][0]['competitors'][0]
-                away = ev['competitions'][0]['competitors'][1]
-                # Garante home correto
-                if home['homeAway']=='away':
-                    home,away = away,home
-                jogos.append({
-                    "liga": "Brasileirão",
-                    "time1": home['team']['displayName'],
-                    "placar1": home.get('score','0'),
-                    "time2": away['team']['displayName'],
-                    "placar2": away.get('score','0'),
-                    "status": ev['status']['type']['detail']
-                })
+                c=ev['competitions'][0]['competitors']
+                h=c[0] if c[0]['homeAway']=='home' else c[1]
+                a=c[1] if c[0]['homeAway']=='home' else c[0]
+                jogos.append(f"{h['team']['displayName']} {h.get('score','0')} x {a.get('score','0')} {a['team']['displayName']} - {ev['status']['type']['detail']}")
             except: pass
     except: pass
+    return "\n".join(jogos) if jogos else "Nenhum jogo ao vivo agora"
 
+def busca_wikipedia(tema):
     try:
-        # Premier League + La Liga + Champions
-        for liga_id, nome_liga in [("eng.1","Premier League"),("esp.1","La Liga"),("uefa.champions","Champions")]:
-            r = requests.get(f"https://site.api.espn.com/apis/site/v2/sports/soccer/{liga_id}/scoreboard", timeout=5).json()
-            for ev in r.get("events",[])[:5]:
-                try:
-                    comp = ev['competitions'][0]['competitors']
-                    h = comp[0] if comp[0]['homeAway']=='home' else comp[1]
-                    a = comp[1] if comp[0]['homeAway']=='home' else comp[0]
-                    jogos.append({
-                        "liga": nome_liga,
-                        "time1": h['team']['displayName'],
-                        "placar1": h.get('score','0'),
-                        "time2": a['team']['displayName'],
-                        "placar2": a.get('score','0'),
-                        "status": ev['status']['type']['detail']
-                    })
-                except: pass
-    except: pass
-    return jogos
+        if len(tema)<3: return ""
+        resumo = wikipedia.summary(tema, sentences=3, auto_suggest=False)
+        return f"INFO WIKIPEDIA SOBRE '{tema}': {resumo}"
+    except:
+        try:
+            busca = wikipedia.search(tema, results=1)
+            if busca:
+                return f"INFO WIKIPEDIA SOBRE '{busca[0]}': {wikipedia.summary(busca[0], sentences=3)}"
+        except: pass
+        return ""
 
 @app.route("/")
 def home():
@@ -74,98 +64,115 @@ def home():
 body{margin:0;font-family:Arial;background:#0f0f0f;color:#fff;height:100vh;display:flex;flex-direction:column}
 #top{background:#000;padding:12px;text-align:center;font-weight:bold;border-bottom:1px solid #222}
 #tabs{display:flex;background:#000;border-bottom:1px solid #222}
-.tab{flex:1;padding:12px;text-align:center;cursor:pointer;opacity:0.6;font-size:14px}
+.tab{flex:1;padding:10px;text-align:center;cursor:pointer;opacity:0.6;font-size:12px}
 .tab.active{opacity:1;border-bottom:2px solid #00e676;font-weight:bold}
-#chat,#futebol,#relogioPage{flex:1;overflow:auto;padding:12px;display:none;flex-direction:column;gap:10px}
-#chat.active,#futebol.active,#relogioPage.active{display:flex}
-.u{background:#7c3aed;align-self:flex-end;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:80%}
-.b{background:#1f1f1f;align-self:flex-start;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:80%;border:1px solid #333;white-space:pre-wrap}
+#chat,#futebol,#mundo,#relogioPage{flex:1;overflow:auto;padding:12px;display:none;flex-direction:column;gap:10px}
+#chat.active,#futebol.active,#mundo.active,#relogioPage.active{display:flex}
+.u{background:#7c3aed;align-self:flex-end;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:85%}
+.b{background:#1f1f1f;align-self:flex-start;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:85%;border:1px solid #333;white-space:pre-wrap}
 #bar{display:flex;padding:10px;background:#000;gap:8px}
 input{flex:1;padding:12px 16px;border-radius:25px;border:1px solid #333;background:#1f1f1f;color:#fff}
 button{padding:12px 16px;border-radius:25px;border:none;background:#fff;color:#000;font-weight:bold}
-.jogo{background:#1f1f1f;border:1px solid #333;padding:12px;border-radius:12px}
-.jogo.liga{font-size:11px;color:#00e676;font-weight:bold;margin-bottom:5px}
-.jogo.times{display:flex;justify-content:space-between;align-items:center;font-weight:bold}
-.jogo.placar{background:#000;padding:6px 12px;border-radius:20px}
-.status{font-size:11px;opacity:0.7;margin-top:5px}
+.card{background:#1f1f1f;border:1px solid #333;padding:12px;border-radius:12px}
 </style></head><body>
-<div id="top">INFINITO IA + FUTEBOL AO VIVO</div>
-<div id="tabs"><div class="tab active" onclick="showTab('chat',this)">Chat IA</div><div class="tab" onclick="showTab('futebol',this)">Futebol</div><div class="tab" onclick="showTab('relogioPage',this)">Relogio</div></div>
+<div id="top">INFINITO IA - SABE TUDO DO MUNDO</div>
+<div id="tabs"><div class="tab active" onclick="showTab('chat',this)">Chat</div><div class="tab" onclick="showTab('futebol',this)">Futebol</div><div class="tab" onclick="showTab('mundo',this)">Mundo</div><div class="tab" onclick="showTab('relogioPage',this)">Relogio</div></div>
 
-<div id="chat" class="active"><div class="b">Ola! Sou o Infinito IA com Futebol ao Vivo! Pergunte placar ou veja na aba Futebol!</div></div>
+<div id="chat" class="active"><div class="b">Eu sou o INFINITO IA com CEREBRO DO MUNDO!
+🌍 Sei noticias de hoje, futebol ao vivo, hora mundial, Wikipedia, tudo!
 
-<div id="futebol"><button onclick="loadFutebol()" style="background:#00e676">Atualizar Jogos de Hoje</button><div id="listaJogos" style="display:flex;flex-direction:column;gap:10px"></div></div>
+Pergunte qualquer coisa: "O que aconteceu hoje no Brasil?" "Quem ganhou o jogo do Flamengo?" "O que e buraco negro?"</div></div>
+<div id="futebol"><button onclick="loadFutebol()" style="background:#00e676">Atualizar Futebol</button><div id="listaFut"></div></div>
+<div id="mundo"><button onclick="loadMundo()" style="background:#00e676">Atualizar Noticias do Mundo</button><div id="listaMundo"></div></div>
+<div id="relogioPage"><div id="clockList"></div><button onclick="loadClocks()">Atualizar</button></div>
 
-<div id="relogioPage"><div id="clockList" style="display:flex;flex-direction:column;gap:10px"></div><button onclick="loadClocks()" style="background:#00e676">Atualizar Horarios</button></div>
-
-<div id="bar"><input id="inp" placeholder="Pergunte placar do seu time..."><button onclick="send()">Enviar</button></div>
+<div id="bar"><input id="inp" placeholder="Pergunte qualquer coisa do mundo..."><button onclick="send()">Enviar</button></div>
 
 <script>
-function showTab(t,el){
- document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
- document.querySelectorAll('#chat,#futebol,#relogioPage').forEach(e=>e.classList.remove('active'));
- el.classList.add('active'); document.getElementById(t).classList.add('active');
- if(t=='futebol')loadFutebol(); if(t=='relogioPage')loadClocks();
-}
+function showTab(t,el){document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.querySelectorAll('#chat,#futebol,#mundo,#relogioPage').forEach(e=>e.classList.remove('active'));el.classList.add('active');document.getElementById(t).classList.add('active');if(t=='futebol')loadFutebol();if(t=='mundo')loadMundo();if(t=='relogioPage')loadClocks();}
 async function send(){
- let i=document.getElementById('inp'); let t=i.value.trim(); if(!t)return;
- let c=document.getElementById('chat'); c.innerHTML+=`<div class="u">${t}</div>`; i.value=''; c.scrollTop=c.scrollHeight;
- try{let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});let d=await r.json();c.innerHTML+=`<div class="b">${d.reply}</div>`;}catch(e){c.innerHTML+=`<div class="b">Erro</div>`}c.scrollTop=c.scrollHeight;
+ let i=document.getElementById('inp');let t=i.value.trim();if(!t)return;
+ let c=document.getElementById('chat');c.innerHTML+=`<div class="u">${t}</div>`;i.value='';c.scrollTop=c.scrollHeight;
+ c.innerHTML+=`<div class="b" id="temp">Pesquisando no mundo todo...</div>`;
+ try{let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});let d=await r.json();document.getElementById('temp').remove();c.innerHTML+=`<div class="b">${d.reply}</div>`;}catch(e){document.getElementById('temp').remove();c.innerHTML+=`<div class="b">Erro</div>`}c.scrollTop=c.scrollHeight;
 }
-async function loadFutebol(){
- document.getElementById('listaJogos').innerHTML='Carregando jogos...';
- let r=await fetch('/api/futebol'); let d=await r.json();
- if(d.jogos.length==0){document.getElementById('listaJogos').innerHTML='<div class="jogo">Nenhum jogo hoje. Pergunte no chat: qual jogo do Flamengo hoje?</div>'; return}
- let html=''; d.jogos.forEach(j=>{html+=`<div class="jogo"><div class="liga">${j.liga}</div><div class="times"><span>${j.time1}</span><span class="placar">${j.placar1} x ${j.placar2}</span><span>${j.time2}</span></div><div class="status">${j.status}</div></div>`});
- document.getElementById('listaJogos').innerHTML=html;
-}
-async function loadClocks(){
- let r=await fetch('/horario'); let d=await r.json();
- let html=''; for(let k in d.tudo){html+=`<div class="jogo">${k}: <b>${d.tudo[k]}</b></div>`}
- document.getElementById('clockList').innerHTML=html;
-}
+async function loadFutebol(){document.getElementById('listaFut').innerHTML='Carregando...';let r=await fetch('/api/futebol');let d=await r.json();let h='';d.jogos.forEach(j=>{h+=`<div class="card">${j}</div>`});document.getElementById('listaFut').innerHTML=h||'Nenhum jogo hoje';}
+async function loadMundo(){document.getElementById('listaMundo').innerHTML='Buscando noticias do mundo...';let r=await fetch('/api/mundo');let d=await r.json();let h='';d.noticias.forEach(n=>{h+=`<div class="card">${n}</div>`});document.getElementById('listaMundo').innerHTML=h;}
+async function loadClocks(){let r=await fetch('/horario');let d=await r.json();let h='';for(let k in d.tudo){h+=`<div class="card">${k}: <b>${d.tudo[k]}</b></div>`}document.getElementById('clockList').innerHTML=h;}
 document.getElementById('inp').addEventListener('keypress',e=>{if(e.key==='Enter')send()});
 </script></body></html>
 '''
 
 @app.route("/api/futebol")
 def api_futebol():
-    jogos = get_jogos_futebol()
-    return jsonify({"jogos": jogos})
+    try:
+        r = requests.get("https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard", timeout=5).json()
+        jogos=[]
+        for ev in r.get("events",[])[:10]:
+            try:
+                comp=ev['competitions'][0]['competitors']
+                h=comp[0] if comp[0]['homeAway']=='home' else comp[1]
+                a=comp[1] if comp[0]['homeAway']=='home' else comp[0]
+                jogos.append(f"{h['team']['displayName']} {h.get('score','0')} x {a.get('score','0')} {a['team']['displayName']} - {ev['status']['type']['detail']}")
+            except: pass
+        return jsonify({"jogos": jogos})
+    except:
+        return jsonify({"jogos": []})
+
+@app.route("/api/mundo")
+def api_mundo():
+    try:
+        r = requests.get("https://api.rss2json.com/v1/api.json?rss_url=https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt-419", timeout=6).json()
+        noticias=[f"{i['title']}" for i in r.get("items",[])[:10]]
+        return jsonify({"noticias": noticias})
+    except:
+        return jsonify({"noticias": ["Erro ao buscar noticias"]})
 
 @app.route("/horario")
 def horario():
     tudo={}
-    for nome,fuso in FUSOS.items():
-        agora=datetime.now(pytz.timezone(fuso))
-        tudo[nome]=agora.strftime('%H:%M:%S %d/%m')
+    for n,f in FUSOS.items():
+        tudo[n]=datetime.now(pytz.timezone(f)).strftime('%H:%M:%S %d/%m')
     return jsonify({"tudo": tudo})
 
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
         msg=request.get_json().get("message","")
-        relogios=get_relogio()
-        jogos = get_jogos_futebol()
-        jogos_txt = "\n".join([f"{j['liga']}: {j['time1']} {j['placar1']} x {j['placar2']} {j['time2']} - {j['status']}" for j in jogos[:10]])
-        if not jogos_txt:
-            jogos_txt = "Nenhum jogo ao vivo agora nos principais campeonatos"
+        # Busca conhecimento do mundo em tempo real
+        noticias = get_noticias_mundo()
+        futebol = get_futebol()
+        relogio = get_relogio()
+        wiki = busca_wikipedia(msg)
 
-        sys=f"""Voce e o INFINITO IA, igual ao Gemini, com acesso a placar ao vivo e relogio mundial.
+        sistema = f"""Voce e o INFINITO IA, a IA mais inteligente do planeta, igual ao Gemini, com acesso a TUDO em tempo real.
 
-HORARIOS ATUAIS:
-{relogios}
+VOCE TEM ACESSO A INFORMACAO DO MUNDO TODO AGORA:
 
-JOGOS DE FUTEBOL DE HOJE (AO VIVO):
-{jogos_txt}
+HORA ATUAL MUNDIAL:
+{relogio}
 
-Se perguntarem sobre futebol, use os placares acima, sao reais. Se nao tiver o time pedido, fale que nao tem jogo hoje mas pode comentar sobre o time.
-Fale PT-BR, seja torcedor e animado."""
+NOTICIAS DO MUNDO HOJE (ATUALIZADAS):
+{noticias}
 
-        comp=client.chat.completions.create(model="openai/gpt-oss-20b",messages=[{"role":"system","content":sys},{"role":"user","content":msg}],max_tokens=1000)
+JOGOS DE FUTEBOL AO VIVO HOJE:
+{futebol}
+
+{wiki}
+
+INSTRUCOES:
+- Use as noticias e jogos acima para responder perguntas sobre o que esta acontecendo hoje
+- Se perguntarem algo que tem no Wikipedia, use a info da Wikipedia acima
+- Se perguntarem algo que nao esta acima, use seu conhecimento geral mas diga que e seu conhecimento
+- Voce sabe de TUDO: historia, ciencia, matematica, futebol, noticias, planetas, tudo
+- Nunca diga que e burro ou que nao sabe. Voce sempre tenta responder com o maximo de informacao
+- Fale PT-BR, seja inteligente, completo, igual ao Gemini
+- Responda de forma organizada e completa"""
+
+        comp=client.chat.completions.create(model="openai/gpt-oss-20b",messages=[{"role":"system","content":sistema},{"role":"user","content":msg}],max_tokens=1200, temperature=0.6)
         return jsonify({"reply": comp.choices[0].message.content})
     except Exception as e:
-        return jsonify({"reply": "Erro: "+str(e)[:200]})
+        return jsonify({"reply": f"Erro: {str(e)[:300]}"})
 
 if __name__=="__main__":
     app.run()
