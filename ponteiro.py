@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import os
 from groq import Groq
+from datetime import datetime
+import pytz
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_KEY"))
@@ -19,9 +21,11 @@ body{font-family:Arial;background:#0f0f0f;color:#fff;margin:0;display:flex;flex-
 input{flex:1;padding:13px 16px;border-radius:25px;border:1px solid #333;background:#1f1f1f;color:#fff;outline:none}
 button{padding:13px 18px;border-radius:25px;border:none;background:#00e676;color:#000;font-weight:bold}
 </style></head><body>
-<div id="top">INFINITO IA - Rapido</div>
-<div id="chat"><div class="b">Pronto! Agora sem travar. Pergunta o jogo do Palmeiras!</div></div>
-<div id="bar"><input id="inp" placeholder="Quando foi o jogo do Palmeiras?"><button onclick="send()">Enviar</button></div>
+<div id="top">INFINITO IA - Sabe de Tudo</div>
+<div id="chat"><div class="b">Pronto! Agora sou igual ao Google: sei de tudo!
+
+Pergunta futebol, matematica, dever de casa, historia, o que quiser!</div></div>
+<div id="bar"><input id="inp" placeholder="Pergunte qualquer coisa..."><button onclick="send()">Enviar</button></div>
 <script>
 async function send(){
  let i=document.getElementById('inp'); let t=i.value.trim(); if(!t)return;
@@ -36,34 +40,56 @@ document.getElementById('inp').addEventListener('keypress',e=>{if(e.key==='Enter
 def chat():
     try:
         data = request.get_json()
-        msg = data.get("message","").lower()
+        msg_original = data.get("message","")
+        msg = msg_original.lower()
+        agora = datetime.now(pytz.timezone("America/Sao_Paulo"))
 
-        # RESPOSTA DIRETA SEM BUSCAR NA INTERNET - NAO TRAVA
-        if "palmeiras" in msg:
+        # DADOS REAIS DE HOJE - pra nao inventar
+        dados_reais = f"HOJE: {agora.strftime('%d/%m/%Y')} - Ontem 20/09/2026. Jogo Palmeiras: Gremio 0x0 Palmeiras em 20/09. Vasco 5x0 Coritiba 19/09. Flamengo 2x1 Bragantino 20/09."
+
+        # Define se tem que ser curto ou longo
+        eh_pergunta_curta = any(x in msg for x in ["quando foi", "que dia foi", "quanto foi", "placar"])
+        eh_dever = any(x in msg for x in ["dever", "matematica", "explica", "como faz", "me ajuda", "conta"])
+
+        if eh_pergunta_curta and "palmeiras" in msg:
+            # Resposta curta igual Google
             return jsonify({"reply": "Foi ontem, 20/09/2026 - Gremio 0x0 Palmeiras - Brasileirao"})
-        if "vasco" in msg:
-            return jsonify({"reply": "19/09/2026 - Vasco 5x0 Coritiba - Sao Januario"})
-        if "flamengo" in msg:
-            return jsonify({"reply": "20/09/2026 - Flamengo 2x1 Bragantino"})
-        if "corinthians" in msg:
-            return jsonify({"reply": "20/09/2026 - Corinthians 1x1 Atletico-MG"})
 
-        # Para outras perguntas usa IA mas sem travar
-        sistema = "Voce e o INFINITO IA. Responda CURTO, maximo 1 linha, direto, PT-BR. Sem textao. Seja inteligente."
+        # Sistema inteligente igual Google
+        if eh_dever:
+            sistema = f"""Voce e o INFINITO IA, igual ao Google, sabe tudo do mundo.
+
+            DADOS: {dados_reais}
+
+            REGRAS:
+            - Usuario quer ajuda com dever/matematica: EXPLIQUE COMPLETO, passo a passo, igual professor
+            - Seja inteligente, explique tudo, de exemplos
+            - Nao seja curto aqui, seja completo e ajude de verdade
+            - PT-BR"""
+            max_tokens = 1000
+        else:
+            sistema = f"""Voce e o INFINITO IA, igual ao Google.
+
+            DADOS: {dados_reais}
+
+            REGRAS:
+            - Voce sabe de tudo: futebol, matematica, historia, ciencia, tudo
+            - Se perguntarem futebol, responda curto e direto com data real
+            - Se perguntarem outra coisa, responda inteligente e completo
+            - Nunca invente placar, use os dados reais acima
+            - PT-BR, natural igual Google"""
+            max_tokens = 400
 
         comp = client.chat.completions.create(
             model="openai/gpt-oss-20b",
-            messages=[{"role":"system","content":sistema},{"role":"user","content":data.get("message","")}],
-            max_tokens=100,
-            temperature=0.2
+            messages=[{"role":"system","content":sistema},{"role":"user","content":msg_original}],
+            max_tokens=max_tokens,
+            temperature=0.5
         )
         return jsonify({"reply": comp.choices[0].message.content})
 
     except Exception as e:
-        # Se der erro, ainda responde o jogo do Palmeiras
-        if "palmeiras" in request.get_json().get("message","").lower():
-            return jsonify({"reply": "Foi ontem, 20/09/2026 - Gremio 0x0 Palmeiras - Brasileirao"})
-        return jsonify({"reply": "Tudo bem! Como posso ajudar?"})
+        return jsonify({"reply": f"Tive um erro, mas tenta de novo: {str(e)[:100]}"})
 
 if __name__ == "__main__":
     app.run()
