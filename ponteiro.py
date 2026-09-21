@@ -1,93 +1,65 @@
-CORRIGIR TODOS OS ERROS DE SINTAXE DO ponteiro.py
+ATENÇÃO: NÃO tente corrigir as setas uma por uma.
 
-O Render ainda está falhando ao iniciar o aplicativo.
+O arquivo `ponteiro.py` atualmente está com vários trechos inválidos inseridos dentro do código Python e o Render está falhando com:
 
-Erro atual:
-
-File "/opt/render/project/src/ponteiro.py", line 36
-    ↓
-    ^
 SyntaxError: invalid character '↓' (U+2193)
 
+O projeto possui uma versão anterior que funcionava no commit:
+
+a630dc2
+
+Na lista de deploys do Render, esse commit aparece como deploy bem-sucedido.
+
+OBJETIVO DESTE PASSO:
+
+RESTAURAR O `ponteiro.py` para a versão funcional anterior do commit `a630dc2`.
+
 IMPORTANTE:
-O problema não está somente na linha 36.
 
-O arquivo provavelmente contém vários caracteres ou trechos de fluxograma que foram inseridos como se fossem código Python.
+- Não implementar pesquisa na internet agora.
+- Não adicionar novas funcionalidades.
+- Não adicionar setas.
+- Não adicionar fluxogramas.
+- Não reescrever o aplicativo.
+- Não alterar o HTML.
+- Não alterar o frontend.
+- Não alterar a configuração do Render.
+- Não alterar o Groq.
+- Não alterar o endpoint `/chat`.
+- Não alterar outras funcionalidades.
 
-ANTES DE ALTERAR:
-Leia o arquivo `ponteiro.py` COMPLETO.
+Se o Git estiver disponível, recuperar o arquivo exatamente como estava no commit:
 
-Faça uma revisão de todo o arquivo procurando qualquer conteúdo que não seja código Python válido.
+a630dc2
 
-REMOVER:
-- setas "↓", "↑", "→", "←";
-- fluxogramas;
-- textos explicativos que estejam fora de comentários ou strings;
-- instruções de arquitetura que foram inseridas diretamente no código;
-- caracteres soltos que causariam SyntaxError.
+O objetivo é recuperar o código funcional, e NÃO tentar limpar manualmente o arquivo atual.
 
-NÃO remover caracteres que estejam corretamente dentro de strings Python e façam parte do funcionamento do aplicativo.
+Depois de restaurar o arquivo:
 
-MUITO IMPORTANTE:
-Não faça uma simples substituição cega de todos os caracteres.
-
-Identifique quais linhas são código inválido e remova somente essas linhas.
-
-PRESERVAR COMPLETAMENTE:
-- Flask;
-- `app = Flask(__name__)`;
-- cliente Groq;
-- variável `GROQ_KEY`;
-- endpoint `/`;
-- endpoint `/chat`;
-- HTML atual;
-- JavaScript atual;
-- sistema atual de envio de mensagens;
-- sistema atual de resposta da IA;
-- tratamento de erros existente;
-- todas as funcionalidades que estavam funcionando antes.
-
-NÃO implementar neste momento:
-- pesquisa na internet;
-- novas APIs;
-- busca web;
-- voz;
-- imagens;
-- histórico;
-- novas funcionalidades.
-
-OBJETIVO ÚNICO:
-Fazer o `ponteiro.py` voltar a ser um arquivo Python válido e fazer:
-
-gunicorn ponteiro:app
-
-conseguir importar:
-
-app
-
-CORREÇÃO:
-
-Depois de limpar o arquivo, verifique se não existe mais nenhum caractere ou trecho fora da sintaxe Python.
-
-Faça uma validação completa de sintaxe do arquivo antes de finalizar.
-
-Se tiver acesso ao terminal do projeto, execute uma validação equivalente a:
+1. Verifique a sintaxe do Python.
+2. Execute:
 
 python -m py_compile ponteiro.py
 
-Se houver erro, corrija-o antes de finalizar.
+3. Confirme que não existe nenhum SyntaxError.
+4. Confirme que o arquivo contém:
 
-IMPORTANTE:
-Não reescreva o projeto inteiro.
-Não substitua o código por um exemplo novo.
-Não crie um aplicativo diferente.
+app = Flask(__name__)
 
-Apenas corrija o arquivo existente.
+5. Confirme que o Gunicorn pode iniciar:
 
-NO FINAL informe:
-1. quais linhas inválidas foram removidas/corrigidas;
-2. se existem outros erros de sintaxe;
-3. se `python -m py_compile ponteiro.py` passou;
-4. se `gunicorn ponteiro:app` deverá conseguir iniciar.
+gunicorn ponteiro:app
 
-NÃO faça nenhuma outra melhoria nesta etapa.
+NÃO faça nenhuma melhoria depois da restauração.
+
+Se o commit `a630dc2` não estiver disponível diretamente, procure no histórico Git a última versão bem-sucedida anterior ao commit que introduziu a pesquisa web e restaure SOMENTE o `ponteiro.py` dessa versão.
+
+NÃO use como solução apagar aleatoriamente linhas do arquivo atual.
+
+NO FINAL informe somente:
+
+- qual versão foi restaurada;
+- se `python -m py_compile ponteiro.py` passou;
+- se o `gunicorn ponteiro:app` consegue importar o aplicativo.
+
+PARE depois disso.
