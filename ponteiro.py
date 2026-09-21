@@ -1,117 +1,385 @@
-from flask import Flask, request, jsonify
-import os
-from groq import Groq
-from datetime import datetime
-import pytz
-import requests
+Quero evoluir o Porteiro IA para que ele consiga pesquisar informações atuais na internet antes de responder perguntas que dependem de informações em tempo real.
 
-app = Flask(__name__)
-client = Groq(api_key=os.environ.get("GROQ_KEY"))
+IMPORTANTE:
+- Primeiro leia TODO o arquivo atual `ponteiro.py`.
+- Preserve a estrutura existente.
+- Não apague o sistema atual do Groq.
+- Não remova o chat atual.
+- Não altere o visual atual sem necessidade.
+- Não crie respostas falsas para simular pesquisa.
+- Não invente informações.
+- O sistema deve realmente consultar a internet.
 
-def get_clima_tempo():
-    try:
-        # Tempo real de Bacabal
-        r = requests.get("https://wttr.in/Bacabal?format=%C+%t+vento+%w", timeout=3)
-        return r.text
-    except:
-        return "Clima de Bacabal nao disponivel agora"
+OBJETIVO:
 
-@app.route("/")
-def home():
-    return '''
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-body{font-family:Arial;background:#0f0f0f;color:#fff;margin:0;display:flex;flex-direction:column;height:100vh}
-#top{padding:14px;text-align:center;background:#000;border-bottom:1px solid #222;font-weight:bold;color:#00e676}
-#chat{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.u{background:#7c3aed;align-self:flex-end;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:80%}
-.b{background:#1f1f1f;align-self:flex-start;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:85%;border:1px solid #333;white-space:pre-wrap}
-#bar{display:flex;padding:10px;background:#000;gap:8px}
-input{flex:1;padding:13px 16px;border-radius:25px;border:1px solid #333;background:#1f1f1f;color:#fff;outline:none}
-button{padding:13px 18px;border-radius:25px;border:none;background:#00e676;color:#000;font-weight:bold}
-</style></head><body>
-<div id="top">INFINITO IA - Inteligente</div>
-<div id="chat"><div class="b">Agora sou inteligente de verdade!
+Transformar o Porteiro IA em um sistema híbrido:
 
-Pergunta curta = respondo curto
-Pergunta longa = respondo longo
+USUÁRIO
+↓
+PERGUNTA
+↓
+ANÁLISE DA PERGUNTA
+↓
+É necessário conhecimento atual?
+↓
+SIM → pesquisar na internet
+↓
+resultados da pesquisa
+↓
+Groq analisa os resultados
+↓
+resposta final
+↓
+mostrar fontes
 
-Testa: "que dia foi o jogo?" e "me explica o jogo"</div></div>
-<div id="bar"><input id="inp" placeholder="Pergunte..."><button onclick="send()">Enviar</button></div>
-<script>
-async function send(){
- let i=document.getElementById('inp'); let t=i.value.trim(); if(!t)return;
- let c=document.getElementById('chat'); c.innerHTML+=`<div class="u">${t}</div>`; i.value=''; c.scrollTop=c.scrollHeight;
- try{let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});let d=await r.json();c.innerHTML+=`<div class="b">${d.reply}</div>`;}catch(e){c.innerHTML+=`<div class="b">Erro</div>`}c.scrollTop=c.scrollHeight;
+Quando a pergunta não precisar de informações atuais, o Groq pode responder normalmente sem pesquisa.
+
+EXEMPLOS QUE DEVEM ACIONAR PESQUISA:
+
+- "Qual é a notícia de hoje?"
+- "Quem ganhou o jogo de hoje?"
+- "Qual é o preço atual do Bitcoin?"
+- "Qual é a cotação do dólar agora?"
+- "O que aconteceu hoje no Brasil?"
+- "Qual é o clima agora?"
+- "Quem é o atual presidente..."
+- "Quais são os filmes lançados recentemente?"
+- "Qual é a versão mais recente do Android?"
+- "Pesquise sobre..."
+- "O que aconteceu com..."
+- "Qual é o preço atual de..."
+- "Onde posso encontrar..."
+- qualquer pergunta que claramente dependa de informação atual da internet.
+
+PERGUNTAS QUE NÃO PRECISAM DE PESQUISA:
+
+- matemática;
+- explicações gerais;
+- programação baseada em conhecimento geral;
+- escrita de histórias;
+- criação de textos;
+- conversas normais;
+- perguntas que possam ser respondidas com segurança pelo modelo sem informação atual.
+
+==================================================
+1. PESQUISA REAL NA INTERNET
+==================================================
+
+Adicionar ao backend um mecanismo REAL de pesquisa na internet.
+
+Não usar dados simulados.
+
+A chave da API de pesquisa deve ficar em variável de ambiente.
+
+Exemplo:
+
+SEARCH_API_KEY
+
+NUNCA colocar a chave diretamente no código.
+
+A implementação deve funcionar no servidor hospedado no Render.
+
+==================================================
+2. NOVA FUNÇÃO DE PESQUISA
+==================================================
+
+Criar uma função semelhante a:
+
+search_web(query)
+
+Ela deve:
+
+1. receber a pergunta;
+2. enviar a pesquisa para o serviço de busca;
+3. receber os resultados;
+4. extrair:
+   - título;
+   - URL;
+   - trecho/resumo;
+5. retornar os resultados para o sistema.
+
+Limitar inicialmente a aproximadamente 5 a 8 resultados relevantes para não gastar recursos desnecessariamente.
+
+==================================================
+3. DECIDIR QUANDO PESQUISAR
+==================================================
+
+Criar uma função semelhante a:
+
+needs_web_search(message)
+
+Ela deve determinar se a pergunta depende de informações atuais.
+
+Não usar somente palavras-chave de forma rígida.
+
+Sempre que possível, usar o próprio modelo para classificar se a pesquisa é necessária.
+
+Por exemplo:
+
+PERGUNTA:
+"Quem é Albert Einstein?"
+
+Pode responder sem pesquisa.
+
+PERGUNTA:
+"Quem é o atual presidente do Brasil?"
+
+Pesquisar.
+
+PERGUNTA:
+"Qual é a notícia mais recente sobre inteligência artificial?"
+
+Pesquisar.
+
+PERGUNTA:
+"Quanto é 25 x 30?"
+
+Não pesquisar.
+
+==================================================
+4. GROQ + PESQUISA
+==================================================
+
+Quando houver pesquisa:
+
+1. receber a pergunta do usuário;
+2. pesquisar na internet;
+3. pegar os resultados;
+4. enviar os resultados junto com a pergunta para o Groq;
+5. pedir ao Groq para produzir uma resposta clara usando as informações encontradas.
+
+O prompt enviado ao Groq deve deixar claro:
+
+"Você é o Porteiro IA.
+Use os resultados da pesquisa como fonte para responder.
+Não invente informações que não estejam nos resultados.
+Se as fontes forem contraditórias, informe a divergência.
+Se não houver informação suficiente, diga claramente que não foi possível confirmar.
+Responda em português do Brasil.
+Se a pergunta pedir informação atual, priorize os resultados mais recentes."
+
+==================================================
+5. FONTES
+==================================================
+
+Quando a resposta usar pesquisa da internet, mostrar as fontes abaixo da resposta.
+
+Exemplo:
+
+Resposta do Porteiro IA:
+
+"O dólar está sendo cotado aproximadamente em ..."
+
+Fontes:
+• Banco Central
+• Reuters
+• Valor Econômico
+
+Cada fonte deve ter o link real correspondente.
+
+NÃO inventar URLs.
+
+==================================================
+6. INFORMAÇÕES ATUAIS
+==================================================
+
+O sistema deve conseguir pesquisar informações como:
+
+- notícias;
+- esportes;
+- tecnologia;
+- preços;
+- produtos;
+- empresas;
+- pessoas públicas;
+- acontecimentos recentes;
+- lançamentos;
+- atualizações de software;
+- clima;
+- informações públicas;
+- documentação;
+- programação;
+- pesquisas;
+- assuntos gerais.
+
+==================================================
+7. SEGURANÇA
+==================================================
+
+Nunca colocar:
+
+GROQ_KEY
+SEARCH_API_KEY
+
+diretamente no HTML ou JavaScript do navegador.
+
+As chaves devem permanecer somente no servidor.
+
+Usar:
+
+os.environ.get("GROQ_KEY")
+os.environ.get("SEARCH_API_KEY")
+
+ou a variável correspondente utilizada pelo serviço escolhido.
+
+==================================================
+8. ERROS
+==================================================
+
+Se a pesquisa falhar:
+
+Não mostrar erro técnico para o usuário.
+
+Mostrar algo como:
+
+"Não consegui consultar a internet neste momento. Vou tentar responder usando meu conhecimento."
+
+Se o Groq estiver funcionando, continuar a conversa.
+
+Se a pesquisa não encontrar resultados:
+
+"Não encontrei fontes suficientes para confirmar essa informação."
+
+Não inventar uma resposta.
+
+==================================================
+9. VELOCIDADE
+==================================================
+
+Não pesquisar todas as perguntas.
+
+Pesquisar somente quando necessário.
+
+Evitar chamadas duplicadas.
+
+Manter o chat rápido.
+
+==================================================
+10. INTERFACE
+==================================================
+
+Não modificar o design atual do chat neste momento.
+
+Apenas adicionar as fontes abaixo das respostas que realmente utilizaram pesquisa.
+
+==================================================
+11. CONTEXTO
+==================================================
+
+Continuar usando o contexto da conversa quando apropriado.
+
+Exemplo:
+
+Usuário:
+"Quem é Neymar?"
+
+IA:
+resposta.
+
+Usuário:
+"Onde ele joga atualmente?"
+
+O sistema deve entender que "ele" se refere ao Neymar e pesquisar a informação atual.
+
+==================================================
+12. NÃO INVENTAR
+==================================================
+
+Esta regra é obrigatória:
+
+Se a informação não estiver disponível ou não puder ser confirmada pelas fontes, NÃO inventar.
+
+A IA deve admitir quando não sabe.
+
+==================================================
+13. ARQUITETURA
+==================================================
+
+Manter o endpoint atual `/chat`.
+
+Não quebrar o frontend existente.
+
+O frontend continuará enviando:
+
+POST /chat
+
+O backend continuará retornando JSON.
+
+Se necessário, adicionar ao JSON algo como:
+
+{
+  "answer": "...",
+  "sources": [
+    {
+      "title": "...",
+      "url": "..."
+    }
+  ],
+  "web_search": true
 }
-document.getElementById('inp').addEventListener('keypress',e=>{if(e.key==='Enter')send()});
-</script></body></html>
-'''
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    try:
-        data = request.get_json()
-        msg_original = data.get("message","")
-        msg = msg_original.lower().strip()
-        agora = datetime.now(pytz.timezone("America/Sao_Paulo"))
+Quando não houver pesquisa:
 
-        # --- DETECTOR INTELIGENTE DE TAMANHO ---
-        # Pergunta curta: poucas palavras ou pede data/hora/clima
-        palavras_curta = ["que dia", "quando foi", "que horas", "que hora", "clima", "tempo hoje", "placar", "quanto foi", "resultado"]
-        palavras_longa = ["explica", "me ajuda", "como faz", "como funciona", "por que", "porque", "dever", "me ensina", "detalha", "resumo", "completo"]
+{
+  "answer": "...",
+  "sources": [],
+  "web_search": false
+}
 
-        eh_curta = len(msg.split()) <= 6 or any(p in msg for p in palavras_curta)
-        eh_longa = len(msg.split()) > 8 or any(p in msg for p in palavras_longa)
+==================================================
+14. ANTES DE ALTERAR
+==================================================
 
-        # Dados reais
-        clima = ""
-        if "clima" in msg or "tempo" in msg:
-            clima = get_clima_tempo()
+Primeiro leia o `ponteiro.py` inteiro e entenda:
 
-        info_base = f"HOJE: {agora.strftime('%d/%m/%Y %H:%M')} - Bacabal. Ontem 20/09/2026 Gremio 0x0 Palmeiras. Clima: {clima}"
+- Flask;
+- endpoint `/`;
+- endpoint `/chat`;
+- cliente Groq;
+- HTML;
+- JavaScript;
+- formato atual das mensagens.
 
-        if eh_curta and not eh_longa:
-            # MODO CURTO - igual Google
-            sistema = f"""Voce e o Google. Responda CURTO e DIRETO, 1 linha no maximo.
+Depois faça a implementação preservando o que já existe.
 
-            DADOS: {info_base}
+Não reescreva o projeto inteiro sem necessidade.
 
-            REGRAS MODO CURTO:
-            - Se perguntarem "que dia foi o jogo do Palmeiras?" -> "Foi ontem, 20/09/2026 - Gremio 0x0 Palmeiras"
-            - Se perguntarem "que horas sao?" -> "{agora.strftime('%H:%M')} em Bacabal"
-            - Se perguntarem "como esta o clima?" -> Responda curto com o clima: {clima}
-            - Se perguntarem "quanto e 5x5?" -> "25"
-            - NUNCA mande textao. 1 linha.
-            - PT-BR"""
-            max_tokens = 80
-            temp = 0.2
-        else:
-            # MODO LONGO - explica tudo
-            sistema = f"""Voce e o INFINITO IA, igual ao Google, sabe tudo.
+==================================================
+15. RESULTADO ESPERADO
+==================================================
 
-            DADOS: {info_base}
+Depois da implementação quero poder perguntar:
 
-            REGRAS MODO LONGO:
-            - Usuario fez pergunta longa ou pediu explicacao
-            - Responda completo, inteligente, passo a passo
-            - Se for dever de casa, explique como professor
-            - Se for "me explica o jogo do Palmeiras", explique onde foi, horario, rodada, o que aconteceu
-            - Pode usar 3-5 paragrafos
-            - PT-BR, completo"""
-            max_tokens = 800
-            temp = 0.6
+"Qual é a notícia mais recente sobre IA?"
 
-        comp = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            messages=[{"role":"system","content":sistema},{"role":"user","content":msg_original}],
-            max_tokens=max_tokens,
-            temperature=temp
-        )
-        return jsonify({"reply": comp.choices[0].message.content})
+E o Porteiro IA deve:
 
-    except Exception as e:
-        return jsonify({"reply": "Tenta de novo, deu um erro aqui"})
+1. pesquisar na internet;
+2. encontrar resultados reais;
+3. analisar os resultados com Groq;
+4. responder em português;
+5. mostrar as fontes;
+6. fornecer links reais.
 
-if __name__ == "__main__":
-    app.run()
+Também quero poder perguntar:
+
+"Quanto está o dólar hoje?"
+
+e receber uma resposta baseada em uma consulta atual, em vez de uma resposta baseada somente no conhecimento antigo do modelo.
+
+NO FINAL:
+
+Informe exatamente:
+
+1. quais arquivos foram alterados;
+2. qual serviço de pesquisa foi utilizado;
+3. qual variável de ambiente precisa ser adicionada no Render;
+4. como testar a pesquisa;
+5. um exemplo de pergunta que deve pesquisar;
+6. um exemplo de pergunta que não deve pesquisar.
+
+NÃO remova o Groq.
+NÃO remova o chat.
+NÃO crie dados falsos.
+NÃO simule uma pesquisa.
+A pesquisa precisa ser REAL.
