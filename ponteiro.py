@@ -3,13 +3,13 @@ import os
 from groq import Groq
 from datetime import datetime
 import pytz
-import html
 
 app = Flask(__name__)
 
 client = Groq(
     api_key=os.environ.get("GROQ_KEY")
 )
+
 
 @app.route("/")
 def home():
@@ -103,7 +103,9 @@ button{
 <div id="top">INFINITO IA - Inteligência em tempo real</div>
 
 <div id="chat">
-<div class="b">Olá! Eu sou o INFINITO IA. Posso pesquisar informações atuais na internet quando necessário.</div>
+<div class="b">
+Olá! Eu sou o INFINITO IA.
+</div>
 </div>
 
 <div id="bar">
@@ -114,66 +116,95 @@ button{
 <script>
 
 function addMessage(text, classe){
+
     let c = document.getElementById('chat');
+
     let div = document.createElement('div');
+
     div.className = classe;
+
     div.textContent = text;
+
     c.appendChild(div);
+
     c.scrollTop = c.scrollHeight;
 }
+
 
 async function send(){
 
     let i = document.getElementById('inp');
+
     let t = i.value.trim();
 
     if(!t) return;
 
     addMessage(t, 'u');
+
     i.value = '';
 
-    addMessage('Pesquisando e preparando a resposta...', 'b');
+    addMessage(
+        'Consultando a inteligência...',
+        'b'
+    );
 
     try{
 
         let r = await fetch('/chat',{
+
             method:'POST',
+
             headers:{
                 'Content-Type':'application/json'
             },
+
             body:JSON.stringify({
                 message:t
             })
+
         });
 
         let d = await r.json();
 
-        let mensagens = document.querySelectorAll('.b');
+        let mensagens =
+            document.querySelectorAll('.b');
 
         if(mensagens.length > 0){
             mensagens[mensagens.length - 1].remove();
         }
 
-        addMessage(d.reply || 'Não consegui responder.', 'b');
+        addMessage(
+            d.reply || 'Não consegui responder.',
+            'b'
+        );
 
     }catch(e){
 
-        let mensagens = document.querySelectorAll('.b');
+        let mensagens =
+            document.querySelectorAll('.b');
 
         if(mensagens.length > 0){
             mensagens[mensagens.length - 1].remove();
         }
 
-        addMessage('Erro ao conectar com a inteligência. Tente novamente.', 'b');
+        addMessage(
+            'Erro de conexão: ' + e,
+            'b'
+        );
     }
 
     i.focus();
 }
 
-document.getElementById('inp').addEventListener('keypress',function(e){
+
+document
+.getElementById('inp')
+.addEventListener('keypress',function(e){
+
     if(e.key === 'Enter'){
         send();
     }
+
 });
 
 </script>
@@ -192,12 +223,10 @@ def precisa_pesquisa(msg):
         "agora",
         "atualmente",
         "2026",
-        "últimas notícias",
-        "ultimas noticias",
         "notícia",
         "noticias",
-        "notícia de hoje",
-        "noticias de hoje",
+        "últimas notícias",
+        "ultimas noticias",
         "tempo",
         "clima",
         "previsão",
@@ -207,8 +236,8 @@ def precisa_pesquisa(msg):
         "futebol",
         "resultado",
         "eleição",
-        "eleicoes",
         "eleições",
+        "eleicoes",
         "presidente",
         "política",
         "politica",
@@ -238,7 +267,10 @@ def precisa_pesquisa(msg):
         "ultimas"
     ]
 
-    return any(p in texto for p in palavras)
+    return any(
+        palavra in texto
+        for palavra in palavras
+    )
 
 
 @app.route("/chat", methods=["POST"])
@@ -248,95 +280,95 @@ def chat():
 
         data = request.get_json() or {}
 
-        msg_original = str(data.get("message", "")).strip()
+        msg_original = str(
+            data.get("message", "")
+        ).strip()
 
         if not msg_original:
+
             return jsonify({
                 "reply": "Digite uma pergunta."
             })
+
 
         agora = datetime.now(
             pytz.timezone("America/Sao_Paulo")
         )
 
-        pesquisa = precisa_pesquisa(msg_original)
 
-        if len(msg_original.split()) > 20 and any(
-            x in msg_original.lower()
-            for x in [
-                "história",
-                "historia",
-                "conto",
-                "livro",
-                "roteiro"
-            ]
-        ):
-            modo = "CRIATIVO"
+        pesquisa = precisa_pesquisa(
+            msg_original
+        )
 
-        elif any(
-            x in msg_original.lower()
-            for x in [
-                "300 linhas",
-                "300 linha",
-                "200 linhas",
-                "100 linhas",
-                "texto grande"
-            ]
-        ):
+
+        texto_lower = msg_original.lower()
+
+
+        if any(x in texto_lower for x in [
+            "300 linhas",
+            "300 linha",
+            "200 linhas",
+            "100 linhas",
+            "texto grande",
+            "livro"
+        ]):
+
             modo = "TEXTO_LONGO"
 
+
+        elif any(x in texto_lower for x in [
+            "história",
+            "historia",
+            "conto",
+            "roteiro"
+        ]):
+
+            modo = "CRIATIVO"
+
+
         else:
+
             modo = "NORMAL"
 
 
         sistema = f"""
-Você é o INFINITO IA, um assistente inteligente em português do Brasil.
+Você é o INFINITO IA,
+um assistente inteligente em português do Brasil.
 
 Data e hora atual:
 {agora.strftime('%d/%m/%Y %H:%M')}
 
-Seu objetivo é responder com precisão, clareza e naturalidade.
+Modo atual:
+{modo}
 
-REGRAS:
+Regras:
 
 1. Responda sempre em português do Brasil.
 
-2. Nunca invente fatos.
+2. Seja preciso e explique o raciocínio de forma clara,
+sem inventar fatos.
 
-3. Quando houver informação atualizada disponível pela pesquisa na internet,
-use as informações encontradas para responder.
+3. Quando a pergunta depender de informações atuais,
+use a pesquisa na internet.
 
-4. Quando utilizar pesquisa na internet, diferencie fatos atuais de
-informações antigas.
+4. Diferencie informações confirmadas de hipóteses.
 
-5. Se a pergunta for sobre notícias, futebol, resultados, preços,
-clima, acontecimentos recentes, pessoas públicas, empresas,
-tecnologia ou qualquer assunto que possa ter mudado recentemente,
-pesquise antes de responder.
+5. Para perguntas criativas, como histórias e roteiros,
+seja criativo.
 
-6. Se a pergunta for criativa, como história, roteiro ou personagem,
-não precisa pesquisar.
+6. Não invente fontes.
 
-7. Não diga que possui conhecimento infinito.
+7. Não diga que sabe absolutamente tudo.
 
-8. Se não encontrar informação suficiente, diga claramente que não
-encontrou informação suficiente.
+8. Se não tiver informação suficiente,
+diga claramente.
 
-9. Não invente fontes ou links.
+9. Para perguntas difíceis,
+analise cuidadosamente antes de responder.
 
-10. Seja inteligente e explique o necessário sem ficar repetitivo.
-
-MODO ATUAL:
-{modo}
-
-PESQUISA NA INTERNET:
-{"ATIVADA" if pesquisa else "NÃO NECESSÁRIA"}
+10. Dê uma resposta completa e útil.
 """
 
-
-        # ============================================
-        # PERGUNTAS QUE PRECISAM DE INTERNET
-        # ============================================
 
         if pesquisa:
 
@@ -367,14 +399,11 @@ PESQUISA NA INTERNET:
 
                 temperature=0.6,
 
-                include_reasoning=False
+                stream=False
             )
 
-        else:
 
-            # ============================================
-            # PERGUNTAS NORMAIS / CRIATIVAS
-            # ============================================
+        else:
 
             if modo == "TEXTO_LONGO":
 
@@ -386,7 +415,7 @@ PESQUISA NA INTERNET:
 
             else:
 
-                max_tokens = 2000
+                max_tokens = 2500
 
 
             resposta = client.chat.completions.create(
@@ -408,14 +437,23 @@ PESQUISA NA INTERNET:
 
                 temperature=0.7,
 
-                include_reasoning=False
+                stream=False
             )
 
 
-        conteudo = resposta.choices[0].message.content
+        conteudo = (
+            resposta.choices[0]
+            .message.content
+        )
+
 
         if not conteudo:
-            conteudo = "Não consegui gerar uma resposta."
+
+            conteudo = (
+                "A inteligência não retornou "
+                "uma resposta."
+            )
+
 
         return jsonify({
             "reply": conteudo
@@ -424,16 +462,26 @@ PESQUISA NA INTERNET:
 
     except Exception as e:
 
-        print("ERRO:", repr(e))
+        erro = repr(e)
+
+        print("================================")
+        print("ERRO REAL DA INTELIGENCIA:")
+        print(erro)
+        print("================================")
 
         return jsonify({
-            "reply": "Ocorreu um erro ao consultar a inteligência. Tente novamente."
+
+            "reply":
+            "ERRO REAL:\n\n" + erro
+
         }), 500
 
 
 if __name__ == "__main__":
 
-    port = int(os.environ.get("PORT", 10000))
+    port = int(
+        os.environ.get("PORT", 10000)
+    )
 
     app.run(
         host="0.0.0.0",
