@@ -2,615 +2,124 @@ from flask import Flask, request, jsonify
 import os
 from groq import Groq
 from datetime import datetime
-from zoneinfo import ZoneInfo
+import pytz
 
 app = Flask(__name__)
-
-client = Groq(
-    api_key=os.environ.get("GROQ_KEY")
-)
-
-
-def obter_hora():
-    return datetime.now(
-        ZoneInfo("America/Sao_Paulo")
-    )
-
-
-def precisa_pesquisa(texto):
-    texto = texto.lower()
-
-    palavras = [
-        "hoje",
-        "agora",
-        "atualmente",
-        "último",
-        "última",
-        "últimas",
-        "ultimo",
-        "ultima",
-        "ultimas",
-        "notícia",
-        "notícias",
-        "noticia",
-        "noticias",
-        "resultado",
-        "placar",
-        "jogo",
-        "futebol",
-        "preço",
-        "preco",
-        "cotação",
-        "cotacao",
-        "dólar",
-        "dolar",
-        "euro",
-        "presidente",
-        "eleição",
-        "eleições",
-        "eleicao",
-        "eleicoes",
-        "clima",
-        "previsão",
-        "previsao",
-        "lançamento",
-        "lancamento",
-        "filme",
-        "série",
-        "serie",
-        "pesquise",
-        "pesquisar",
-        "procure",
-        "internet",
-        "mundo",
-        "quem é",
-        "quem e"
-    ]
-
-    return any(
-        palavra in texto
-        for palavra in palavras
-    )
-
-
-def e_criativa(texto):
-    texto = texto.lower()
-
-    palavras = [
-        "história",
-        "historia",
-        "conto",
-        "roteiro",
-        "personagem",
-        "invente",
-        "inventar",
-        "crie uma história",
-        "criar uma história",
-        "poema",
-        "poesia"
-    ]
-
-    return any(
-        palavra in texto
-        for palavra in palavras
-    )
-
-
-def criar_sistema():
-    agora = obter_hora()
-
-    return f"""
-Você é o INFINITO IA, um assistente inteligente
-em português do Brasil.
-
-Data atual:
-{agora.strftime("%d/%m/%Y")}
-
-Hora atual:
-{agora.strftime("%H:%M")}
-
-REGRAS:
-
-1. Responda sempre em português do Brasil.
-
-2. Seja inteligente, claro e preciso.
-
-3. Não invente fatos.
-
-4. Para perguntas que dependem de informações
-atuais, utilize a pesquisa na internet quando
-ela estiver disponível.
-
-5. Diferencie fatos confirmados de hipóteses.
-
-6. Para perguntas difíceis, faça uma análise
-cuidadosa e explique passo a passo.
-
-7. Para matemática, faça os cálculos corretamente.
-
-8. Para histórias e roteiros, seja criativo.
-
-9. Não invente fontes ou links.
-
-10. Se não souber algo, diga claramente.
-
-11. Não diga que possui conhecimento infinito.
-
-12. Responda diretamente à pergunta do usuário.
-"""
-
+client = Groq(api_key=os.environ.get("GROQ_KEY"))
 
 @app.route("/")
 def home():
     return '''
-<!DOCTYPE html>
-<html>
-
-<head>
-
-<meta name="viewport"
-content="width=device-width,initial-scale=1">
-
-<title>INFINITO IA</title>
-
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-
-body{
-    font-family:Arial,sans-serif;
-    background:#0f0f0f;
-    color:#fff;
-    margin:0;
-    display:flex;
-    flex-direction:column;
-    height:100vh;
-}
-
-#top{
-    padding:15px;
-    text-align:center;
-    background:#000;
-    border-bottom:1px solid #222;
-    font-weight:bold;
-    color:#00e676;
-}
-
-#chat{
-    flex:1;
-    overflow-y:auto;
-    padding:14px;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-}
-
-.u{
-    background:#7c3aed;
-    align-self:flex-end;
-    padding:11px 14px;
-    border-radius:18px 18px 4px 18px;
-    max-width:82%;
-    white-space:pre-wrap;
-    line-height:1.5;
-}
-
-.b{
-    background:#1f1f1f;
-    align-self:flex-start;
-    padding:11px 14px;
-    border-radius:18px 18px 4px 18px;
-    max-width:92%;
-    border:1px solid #333;
-    white-space:pre-wrap;
-    line-height:1.5;
-}
-
-#bar{
-    display:flex;
-    padding:10px;
-    background:#000;
-    gap:8px;
-}
-
-input{
-    flex:1;
-    padding:14px 16px;
-    border-radius:25px;
-    border:1px solid #333;
-    background:#1f1f1f;
-    color:#fff;
-    outline:none;
-    font-size:16px;
-}
-
-button{
-    padding:13px 19px;
-    border-radius:25px;
-    border:none;
-    background:#00e676;
-    color:#000;
-    font-weight:bold;
-    font-size:15px;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div id="top">
-INFINITO IA - Inteligência
-</div>
-
-<div id="chat">
-
-<div class="b">
-Olá! Eu sou o INFINITO IA.
-Pergunte qualquer coisa.
-</div>
-
-</div>
-
-<div id="bar">
-
-<input
-id="inp"
-placeholder="Pergunte qualquer coisa..."
-autocomplete="off">
-
-<button onclick="send()">
-Enviar
-</button>
-
-</div>
-
+body{font-family:Arial;background:#0f0f0f;color:#fff;margin:0;display:flex;flex-direction:column;height:100vh}
+#top{padding:10px;text-align:center;background:#000;border-bottom:1px solid #222;font-weight:bold;color:#00e676;display:flex;justify-content:space-between;align-items:center}
+#top button{padding:6px 12px;border-radius:6px;border:1px solid #333;background:#222;color:#fff;font-size:12px}
+#chat{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.u{background:#7c3aed;align-self:flex-end;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:80%}
+.b{background:#1f1f1f;align-self:flex-start;padding:10px 14px;border-radius:18px 18px 4px 18px;max-width:90%;border:1px solid #333;white-space:pre-wrap}
+#bar{display:flex;padding:10px;background:#000;gap:8px}
+input{flex:1;padding:13px 16px;border-radius:25px;border:1px solid #333;background:#1f1f1f;color:#fff;outline:none}
+button.send{padding:13px 18px;border-radius:25px;border:none;background:#00e676;color:#000;font-weight:bold}
+</style></head><body>
+<div id="top"><span>INFINITO IA - Com Memoria</span><div><button onclick="nova()">NOVA</button> <button onclick="limpar()">LIMPAR</button></div></div>
+<div id="chat"></div>
+<div id="bar"><input id="inp" placeholder="Digite sua mensagem..."><button class="send" onclick="send()">ENVIAR</button></div>
 <script>
+let historico = JSON.parse(localStorage.getItem('hist_infinito') || '[]');
+let chatDiv = document.getElementById('chat');
 
-function addMessage(text, classe){
-
-    const chat =
-        document.getElementById("chat");
-
-    const div =
-        document.createElement("div");
-
-    div.className = classe;
-
-    div.textContent = text;
-
-    chat.appendChild(div);
-
-    chat.scrollTop =
-        chat.scrollHeight;
+function render(){
+ chatDiv.innerHTML='';
+ historico.forEach(m=>{
+   if(m.role==='user') chatDiv.innerHTML+=`<div class="u">${m.content}</div>`;
+   else chatDiv.innerHTML+=`<div class="b">${m.content}</div>`;
+ });
+ chatDiv.scrollTop = chatDiv.scrollHeight;
+ if(historico.length===0) chatDiv.innerHTML='<div class="b">Olá! Qual é o seu nome?</div>';
 }
+render();
 
+function salvar(){ localStorage.setItem('hist_infinito', JSON.stringify(historico)); }
 
 async function send(){
-
-    const input =
-        document.getElementById("inp");
-
-    const pergunta =
-        input.value.trim();
-
-    if(!pergunta){
-        return;
-    }
-
-    addMessage(
-        pergunta,
-        "u"
-    );
-
-    input.value = "";
-
-    addMessage(
-        "Pensando...",
-        "b"
-    );
-
-    try{
-
-        const resposta =
-            await fetch(
-                "/chat",
-                {
-                    method:"POST",
-
-                    headers:{
-                        "Content-Type":
-                        "application/json"
-                    },
-
-                    body:JSON.stringify({
-                        message:pergunta
-                    })
-                }
-            );
-
-
-        const texto =
-            await resposta.text();
-
-
-        const mensagens =
-            document.querySelectorAll(".b");
-
-
-        if(mensagens.length > 0){
-
-            mensagens[
-                mensagens.length - 1
-            ].remove();
-
-        }
-
-
-        let dados;
-
-
-        try{
-
-            dados =
-                JSON.parse(texto);
-
-        }
-        catch(erro){
-
-            addMessage(
-                "ERRO DO SERVIDOR\\n\\n" +
-                "HTTP: " +
-                resposta.status +
-                "\\n\\n" +
-                texto.substring(0,1500),
-                "b"
-            );
-
-            return;
-        }
-
-
-        if(!resposta.ok){
-
-            addMessage(
-                dados.reply ||
-                "Erro HTTP " +
-                resposta.status,
-                "b"
-            );
-
-            return;
-        }
-
-
-        addMessage(
-            dados.reply ||
-            "Não recebi uma resposta.",
-            "b"
-        );
-
-    }
-    catch(erro){
-
-        const mensagens =
-            document.querySelectorAll(".b");
-
-
-        if(mensagens.length > 0){
-
-            mensagens[
-                mensagens.length - 1
-            ].remove();
-
-        }
-
-
-        addMessage(
-            "ERRO DE CONEXÃO\\n\\n" +
-            erro,
-            "b"
-        );
-    }
-
-    input.focus();
+ let i=document.getElementById('inp'); let t=i.value.trim(); if(!t)return;
+ historico.push({role:'user', content:t}); salvar(); render(); i.value='';
+ try{
+   let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:historico})});
+   let d=await r.json();
+   historico.push({role:'assistant', content:d.reply}); salvar(); render();
+ }catch(e){ historico.push({role:'assistant', content:'Erro de conexao'}); salvar(); render(); }
 }
 
+function limpar(){ historico=[]; salvar(); render(); }
+function nova(){ limpar(); }
 
-document
-.getElementById("inp")
-.addEventListener(
-    "keypress",
-    function(event){
-
-        if(event.key === "Enter"){
-            send();
-        }
-
-    }
-);
-
-</script>
-
-</body>
-
-</html>
+document.getElementById('inp').addEventListener('keypress',e=>{if(e.key==='Enter')send()});
+</script></body></html>
 '''
-
 
 @app.route("/chat", methods=["POST"])
 def chat():
-
     try:
+        data = request.get_json()
+        messages = data.get("messages", [])
+        if not messages:
+            msg = data.get("message","")
+            messages = [{"role":"user","content":msg}]
 
-        data = request.get_json(
-            silent=True
-        ) or {}
+        agora = datetime.now(pytz.timezone("America/Sao_Paulo"))
 
+        # Pega nome se ja falou
+        nome = ""
+        for m in messages:
+            if "meu nome é" in m.get("content","").lower():
+                try:
+                    nome = m["content"].lower().split("meu nome é")[-1].strip().split()[0].capitalize()
+                except: pass
 
-        mensagem = str(
-            data.get(
-                "message",
-                ""
-            )
-        ).strip()
+        sistema = f"""Voce e o INFINITO IA, inteligente, com MEMORIA, igual ao Google.
 
+        DATA: {agora.strftime('%d/%m/%Y %H:%M')} Bacabal
 
-        if not mensagem:
+        REGRAS DE MEMORIA IMPORTANTES:
+        - Voce TEM memoria do historico, lembre o nome da pessoa!
+        - Se o usuario ja disse o nome, NUNCA pergunte de novo "qual seu nome"
+        - Se nome = Junior, chame de Junior
+        - Se perguntarem "qual meu nome?" responda o nome que esta no historico
+        - Nao escreva "sabho", escreva certo "sei"
+        - Seja inteligente: resposta curta se pergunta curta, longa se pergunta longa
+        - Sabe de tudo: futebol (Palmeiras 20/09 Gremio 0x0), clima, matematica, historias de 300 linhas
+        - Nome detectado: {nome}
 
-            return jsonify({
-                "reply": "Digite uma pergunta."
-            })
+        HISTORICO JA TEM NOME? Se sim, use.
+        """
 
+        # Monta mensagens para a Groq com memoria
+        groq_messages = [{"role":"system","content":sistema}]
+        for m in messages[-10:]: # ultimas 10 mensagens pra ter memoria
+            role = m.get("role","user")
+            if role not in ["user","assistant"]: continue
+            groq_messages.append({"role":role,"content":m.get("content","")})
 
-        sistema = criar_sistema()
-
-
-        pesquisa = precisa_pesquisa(
-            mensagem
-        )
-
-
-        criativa = e_criativa(
-            mensagem
-        )
-
-
-        texto_lower = mensagem.lower()
-
-
-        if any(x in texto_lower for x in [
-            "300 linhas",
-            "300 linha",
-            "200 linhas",
-            "100 linhas",
-            "texto grande",
-            "livro"
-        ]):
-
-            max_tokens = 6000
-
-        elif criativa:
-
-            max_tokens = 4000
-
+        # Detecta tamanho
+        ultima = messages[-1]["content"].lower()
+        if any(x in ultima for x in ["historia","300 linha","conto"]):
+            max_t = 3000
+        elif len(ultima.split()) <= 6 and any(x in ultima for x in ["que dia","quando foi","que horas","clima"]):
+            max_t = 120
         else:
+            max_t = 800
 
-            max_tokens = 3000
-
-
-        if pesquisa and not criativa:
-
-            resposta = client.chat.completions.create(
-
-                model="openai/gpt-oss-20b",
-
-                messages=[
-                    {
-                        "role": "system",
-                        "content": sistema
-                    },
-                    {
-                        "role": "user",
-                        "content": mensagem
-                    }
-                ],
-
-                tools=[
-                    {
-                        "type": "browser_search"
-                    }
-                ],
-
-                tool_choice="required",
-
-                max_completion_tokens=4000,
-
-                temperature=0.6,
-
-                stream=False
-            )
-
-        else:
-
-            resposta = client.chat.completions.create(
-
-                model="openai/gpt-oss-20b",
-
-                messages=[
-                    {
-                        "role": "system",
-                        "content": sistema
-                    },
-                    {
-                        "role": "user",
-                        "content": mensagem
-                    }
-                ],
-
-                max_completion_tokens=max_tokens,
-
-                temperature=0.7,
-
-                stream=False
-            )
-
-
-        conteudo = (
-            resposta.choices[0]
-            .message.content
+        comp = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            messages=groq_messages,
+            max_tokens=max_t,
+            temperature=0.6
         )
-
-
-        if not conteudo:
-
-            conteudo = (
-                "Não consegui gerar "
-                "uma resposta."
-            )
-
-
-        return jsonify({
-            "reply": conteudo
-        })
-
-
-    except Exception as erro:
-
-        print(
-            "================================"
-        )
-
-        print(
-            "ERRO REAL DO INFINITO IA:"
-        )
-
-        print(
-            repr(erro)
-        )
-
-        print(
-            "================================"
-        )
-
-
-        return jsonify({
-            "reply":
-            "ERRO REAL DO SERVIDOR:\\n\\n"
-            + repr(erro)
-        }), 500
-
+        return jsonify({"reply": comp.choices[0].message.content})
+    except Exception as e:
+        return jsonify({"reply": f"Erro: {e}"})
 
 if __name__ == "__main__":
-
-    port = int(
-        os.environ.get(
-            "PORT",
-            10000
-        )
-    )
-
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-        )
+    app.run()
