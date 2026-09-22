@@ -3,4 +3,3 @@ groq
 gunicorn
 pytz
 requests
-wikipedia
